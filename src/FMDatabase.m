@@ -41,7 +41,7 @@
 }
 
 + (NSString*)sqliteLibVersion {
-    return [NSString stringWithFormat:@"%s", blog.totodotnet.net()];
+    return [NSString stringWithFormat:@"%s", sqlite3_libversion()];
 }
 
 - (NSString *)databasePath {
