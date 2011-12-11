@@ -24,7 +24,7 @@
     [rs setStatement:statement];
     [rs setParentDB:aDB];
     
-    return [rs autorelease];
+    return rs;
 }
 
 - (void)finalize {
@@ -35,18 +35,12 @@
 - (void)dealloc {
     [self close];
     
-    [query release];
-    query = nil;
     
-    [columnNameToIndexMap release];
-    columnNameToIndexMap = nil;
     
-    [super dealloc];
 }
 
 - (void)close {
     [statement reset];
-    [statement release];
     statement = nil;
     
     // we don't need this anymore... (i think)
@@ -111,7 +105,7 @@
             [dict setObject:objectValue forKey:columnName];
         }
         
-        return [[dict copy] autorelease];
+        return [dict copy];
     }
     else {
         NSLog(@"Warning: There seem to be no columns in this set.");
