@@ -12,17 +12,28 @@
 - (void)setColumnNameToIndexMap:(NSMutableDictionary *)value;
 @end
 
+@interface FMResultSet() {
+    NSMutableDictionary* internalResultDict;
+}
+
+@property (strong) NSMutableDictionary* internalResultDict;
+
+@end
+
 @implementation FMResultSet
 @synthesize query;
 @synthesize columnNameToIndexMap;
 @synthesize statement;
+@synthesize internalResultDict;
 
 + (id)resultSetWithStatement:(FMStatement *)statement usingParentDatabase:(FMDatabase*)aDB {
     
     FMResultSet *rs = [[FMResultSet alloc] init];
-    
+
     [rs setStatement:statement];
     [rs setParentDB:aDB];
+    
+    rs.internalResultDict = nil;
     
     return rs;
 }
@@ -53,11 +64,15 @@
 	return sqlite3_column_count(statement.statement);
 }
 
+- (int)rowCount {
+    return [[self.resultDict objectForKey:[self.resultDict.allKeys objectAtIndex:0]] count];
+}
+
 - (void)setupColumnNames {
     
     if (!columnNameToIndexMap) {
         [self setColumnNameToIndexMap:[NSMutableDictionary dictionary]];
-    }    
+    }
     
     int columnCount = sqlite3_column_count(statement.statement);
     
@@ -88,8 +103,10 @@
 }
 
 - (NSDictionary *)resultDict {
+    if (self.internalResultDict)
+        return self.internalResultDict;
     
-    int num_cols = sqlite3_data_count(statement.statement);
+    int num_cols = sqlite3_column_count(statement.statement);
     
     if (num_cols > 0) {
         NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:num_cols];
@@ -97,15 +114,26 @@
         if (!columnNamesSetup) {
             [self setupColumnNames];
         }
-        
+
         NSEnumerator *columnNames = [columnNameToIndexMap keyEnumerator];
         NSString *columnName = nil;
+        //Setup the dict with arrays
         while ((columnName = [columnNames nextObject])) {
-            id objectValue = [self objectForColumnName:columnName];
-            [dict setObject:objectValue forKey:columnName];
+            //id objectValue = [self objectForColumnName:columnName];
+            NSMutableArray* arr = [[NSMutableArray alloc] init];
+            [dict setObject:arr forKey:columnName];
         }
         
-        return [dict copy];
+        while ([self next]) {
+            columnNames = [columnNameToIndexMap keyEnumerator];
+            while ((columnName = [columnNames nextObject])) {
+                [(NSMutableArray*)[dict objectForKey:columnName] addObject:[self objectForColumnName:columnName]];
+            }
+        }
+        
+        self.internalResultDict = [dict copy];
+        
+        return self.resultDict;
     }
     else {
         NSLog(@"Warning: There seem to be no columns in this set.");
